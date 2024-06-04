@@ -107,7 +107,7 @@ function Velocity(thisObj) {
         myPanel.grp.settingsGroup.helpButton.onClick = function () {
             alertShow(
                 "Author: youtube.com/@shy_rikki\n" +
-                "Source: motionscript.com/articles/speed-control.html"
+                "Source: github.com/eirisocherry/velocity-script"
             );
         }
 
