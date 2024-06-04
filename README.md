@@ -22,8 +22,8 @@ After Effects script that allows you to animate time-remapping using speed slide
 ### Buttons
 - **Add Velocity**: Adds velocity.
 - - **Regular**: default time-remapping.
-- - **Advanced**: time-remapping with a speed slider.
-![alt text](image.png)
+- - **Advanced**: time-remapping with a speed slider.  
+![alt text](image.png)  
 - **Split**: Splits the layer and removes useless velocity keyframes.
 - **=**: Opens the 'minimal speed' calculator.
 - **?**: Shows some information.
