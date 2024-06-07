@@ -288,7 +288,7 @@ function Velocity(thisObj) {
 
         if (comp.selectedLayers.length > 1) {
             var confirmDelete = confirm("Applying velocity to several layers at once might cause AE to crash.\n\n" +
-            "Still continue?");
+                "Still continue?");
             if (!confirmDelete) {
                 return;
             }
@@ -355,7 +355,14 @@ function Velocity(thisObj) {
 
             // Remove all keyframes except the ones we want to keep
             for (var j = timeRemap.numKeys; j > 0; j--) {
-                if (keyIndicesToKeep.indexOf(j) === -1) {
+                var keep = false;
+                for (var k = 0; k < keyIndicesToKeep.length; k++) {
+                    if (keyIndicesToKeep[k] === j) {
+                        keep = true;
+                        break;
+                    }
+                }
+                if (!keep) {
                     timeRemap.removeKey(j);
                 }
             }
@@ -388,7 +395,7 @@ function Velocity(thisObj) {
 
         if (comp.selectedLayers.length > 1) {
             var confirmDelete = confirm("Applying velocity to several layers at once might cause AE to crash.\n\n" +
-            "Still continue?");
+                "Still continue?");
             if (!confirmDelete) {
                 return;
             }
@@ -594,11 +601,11 @@ function Velocity(thisObj) {
                 // Read time remap value on main layer
                 var mainLayerTimeRemap = mainLayer.property("Time Remap");
                 var timeRemapValue = mainLayerTimeRemap.valueAtTime(currentTime, true);
-                var timeRemapValueBehind = mainLayerTimeRemap.valueAtTime(currentTime-compFrameDuration, true);
+                var timeRemapValueBehind = mainLayerTimeRemap.valueAtTime(currentTime - compFrameDuration, true);
 
                 // Remove all keyframes from current to the right on main layer
-                mainLayerTimeRemap.setValueAtTime(currentTime-compFrameDuration, timeRemapValueBehind);
-                var mainLayerCurrentKeyframeIndex = mainLayerTimeRemap.nearestKeyIndex(currentTime-compFrameDuration);
+                mainLayerTimeRemap.setValueAtTime(currentTime - compFrameDuration, timeRemapValueBehind);
+                var mainLayerCurrentKeyframeIndex = mainLayerTimeRemap.nearestKeyIndex(currentTime - compFrameDuration);
                 for (var i = mainLayerTimeRemap.numKeys; i > mainLayerCurrentKeyframeIndex; i--) {
                     mainLayerTimeRemap.removeKey(i);
                 }
@@ -702,10 +709,10 @@ function Velocity(thisObj) {
                 // Remove all speed keyframes from current to the right on main layer
                 var mainLayerSpeedSlider = mainLayer.property("Effects").property("Speed (%)").property("Slider");
                 var speedValue = mainLayerSpeedSlider.valueAtTime(currentTime, true);
-                var speedValueBehind = mainLayerSpeedSlider.valueAtTime(currentTime-compFrameDuration, true);
+                var speedValueBehind = mainLayerSpeedSlider.valueAtTime(currentTime - compFrameDuration, true);
                 if (mainLayerSpeedSlider.numKeys > 0) {
-                    mainLayerSpeedSlider.setValueAtTime(currentTime-compFrameDuration, speedValueBehind);
-                    var mainLayerCurrentKeyframeIndex = mainLayerSpeedSlider.nearestKeyIndex(currentTime-compFrameDuration);
+                    mainLayerSpeedSlider.setValueAtTime(currentTime - compFrameDuration, speedValueBehind);
+                    var mainLayerCurrentKeyframeIndex = mainLayerSpeedSlider.nearestKeyIndex(currentTime - compFrameDuration);
                     for (var i = mainLayerSpeedSlider.numKeys; i > mainLayerCurrentKeyframeIndex; i--) {
                         mainLayerSpeedSlider.removeKey(i);
                     }
@@ -713,10 +720,10 @@ function Velocity(thisObj) {
 
                 // Remove all offset keyframes from current to the right on main layer
                 var mainLayerOffsetSlider = mainLayer.property("Effects").property("Offset").property("Slider");
-                var offsetValueBehind = mainLayerOffsetSlider.valueAtTime(currentTime-compFrameDuration, true);
+                var offsetValueBehind = mainLayerOffsetSlider.valueAtTime(currentTime - compFrameDuration, true);
                 if (mainLayerOffsetSlider.numKeys > 0) {
-                    mainLayerOffsetSlider.setValueAtTime(currentTime-compFrameDuration, offsetValueBehind);
-                    var mainLayerCurrentKeyframeIndex = mainLayerOffsetSlider.nearestKeyIndex(currentTime-compFrameDuration);
+                    mainLayerOffsetSlider.setValueAtTime(currentTime - compFrameDuration, offsetValueBehind);
+                    var mainLayerCurrentKeyframeIndex = mainLayerOffsetSlider.nearestKeyIndex(currentTime - compFrameDuration);
                     for (var i = mainLayerOffsetSlider.numKeys; i > mainLayerCurrentKeyframeIndex; i--) {
                         mainLayerOffsetSlider.removeKey(i);
                     }
@@ -765,7 +772,7 @@ function Velocity(thisObj) {
 
         if (comp.selectedLayers.length > 1) {
             var confirmDelete = confirm("Deleting velocity from several layers at once might cause AE to crash.\n\n" +
-            "Still continue?");
+                "Still continue?");
             if (!confirmDelete) {
                 return;
             }
