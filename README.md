@@ -16,15 +16,22 @@ After Effects script that allows you to animate time-remapping using speed slide
 3. The Velocity Script panel will open. It's dockable.  
 
 ### Buttons
-- **Add Velocity**: Adds velocity.  
+- **[Add Velocity]** Adds velocity.  
 - - **Regular**: default time-remapping.  
 - - **Advanced**: time-remapping with a speed slider.  
 ![image](https://github.com/eirisocherry/velocity-script/assets/115040224/31f331f9-3a6d-487e-9cfa-2fbbfc3cc8fd)  
-- **Split**: Splits the layer and removes useless velocity keyframes.  
-- **=**: Opens the 'minimal speed' calculator.  
-- **?**: Shows some information.  
-- **x**: Removes the velocity.  
+- **[Split]** Splits the layer and removes useless velocity keyframes.  
+- **[=]** Opens the 'minimal speed' calculator.  
+- **[?]** Shows some information.  
+- **[x]** Removes the velocity.  
 
+### Controllers
+**Speed (%):** playback speed.  
+**Offset:** frame offset.  
+**Time-reverse layer:** reverse playback, play the source from end to start.  
+**Graph support (SLOW!):** audio only slider, <0> force linear keyframe interpolation, <1> graph support (make sure to set comp fps to 30+, otherwise your audio will stutter a lot)  
+
+![image](https://github.com/eirisocherry/velocity-script/assets/115040224/cfd2bc86-881b-4be8-9cba-527ccea5083f)  
 
 ## Support
 Author: https://youtube.com/@shy_rikki  
