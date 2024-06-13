@@ -27,7 +27,7 @@ After Effects script that allows you to animate time-remapping using speed slide
 
 ### Controllers
 **Speed (%):** playback speed.  
-**Offset:** frame offset.  
+**Offset:** frame offset (the value shows the real frame offset only with 1000fps footage, with other framerates it shows 1000/<layer_fps> times higher value).  
 **Time-reverse layer:** reverse playback, play the source from end to start.  
 **Graph support (SLOW!):** audio only slider, <0> force linear keyframe interpolation, <1> graph support (make sure to set comp fps to 30+, otherwise your audio will stutter a lot)  
 
