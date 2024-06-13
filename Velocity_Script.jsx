@@ -9,7 +9,7 @@ function Velocity(thisObj) {
 
     // About
     var name = "Velocity Script";
-    var version = "1.0";
+    var version = "1.1";
 
     // Build UI
     var dropdownMenuSelection;
@@ -118,7 +118,6 @@ function Velocity(thisObj) {
         return myPanel;
     }
 
-    // Create Solver UI
     createSolverUI();
     defaultValues();
 
@@ -305,12 +304,6 @@ function Velocity(thisObj) {
 
             var mainLayer = comp.selectedLayers[i];
 
-            if (!mainLayer.hasVideo) {
-                alertPush('[' + mainLayer.index + '] "' + mainLayer.name + '" is not a video.');
-                errorCollector = true;
-                continue;
-            }
-
             if (!mainLayer.canSetTimeRemapEnabled) {
                 alertPush('[' + mainLayer.index + '] "' + mainLayer.name + '" doesn\'t support velocity.');
                 errorCollector = true;
@@ -412,12 +405,6 @@ function Velocity(thisObj) {
 
             var mainLayer = comp.selectedLayers[i];
 
-            if (!mainLayer.hasVideo) {
-                alertPush('[' + mainLayer.index + '] "' + mainLayer.name + '" is not a video.');
-                errorCollector = true;
-                continue;
-            }
-
             if (!mainLayer.canSetTimeRemapEnabled) {
                 alertPush('[' + mainLayer.index + '] "' + mainLayer.name + '" doesn\'t support velocity.');
                 errorCollector = true;
@@ -438,7 +425,7 @@ function Velocity(thisObj) {
                 mainLayer.timeRemapEnabled = false;
             }
 
-            deleteEffects(mainLayer, ["Speed (%)", "Offset", "Time-reverse layer"]);
+            deleteEffects(mainLayer, ["Speed (%)", "Offset", "Time-reverse layer", "Graph support (SLOW!)"]);
 
             var speedSlider = mainLayer.Effects.addProperty("Slider Control");
             speedSlider.name = "Speed (%)";
@@ -452,6 +439,12 @@ function Velocity(thisObj) {
             var timeReverseCheckbox = mainLayer.Effects.addProperty("Checkbox Control");
             timeReverseCheckbox.name = "Time-reverse layer";
             timeReverseCheckbox.property("Checkbox").setValue(0);
+
+            if (mainLayer.hasAudio && !mainLayer.hasVideo) {
+                var graphSupportCheckbox = mainLayer.Effects.addProperty("Checkbox Control");
+                graphSupportCheckbox.name = "Graph support (SLOW!)";
+                graphSupportCheckbox.property("Checkbox").setValue(0);
+            }
 
             var velocityExpression =
                 '// Variables\n' +
@@ -519,11 +512,116 @@ function Velocity(thisObj) {
                 '	finalTime;\n' +
                 '}';
 
+            var audioVelocityExpression =
+                '// Variables\n' +
+                'var speedControl = effect("Speed (%)")("Slider");\n' +
+                'var numberOfSpeedKeyframes = speedControl.numKeys;\n' +
+                'var offsetControl = effect("Offset")("Slider");\n' +
+                'var offsetValue = offsetControl.value / 1000;\n' +
+                'var inverseControl = effect("Time-reverse layer")("Checkbox");\n' +
+                'var interpolationMode = effect("Graph support (SLOW!)")("Checkbox");\n' +
+                'var timeRemapFirstKeyTime = timeRemap.key(1).time;\n' +
+                'var firstOffset = 0;\n' +
+                'var timeOffset = 0;\n' +
+                'var lastOffset = 0;\n' +
+                'var finalTime = 0;\n' +
+                'var inversedTime = 0;\n' +
+                'var layerDuration = thisLayer.source.duration;\n' +
+                'var fixedLayerDuration = thisLayer.source.duration - thisLayer.source.frameDuration;\n' +
+                '\n' +
+                '// Linear interpolation\n' +
+                'if (interpolationMode.value == 0) {\n' +
+                '    if (numberOfSpeedKeyframes > 0 && speedControl.key(1).time < time) {\n' +
+                '        // Add the area before 1st keyframe\n' +
+                '        timeOffset = speedControl.key(1).value * (speedControl.key(1).time - timeRemapFirstKeyTime);\n' +
+                '        // Add areas between keyframes\n' +
+                '        for (i = 2; i <= numberOfSpeedKeyframes; i++) {\n' +
+                '            if (speedControl.key(i).time > time) break;\n' +
+                '            k1 = speedControl.key(i - 1);\n' +
+                '            k2 = speedControl.key(i);\n' +
+                '            // Add the average value between previous and next keyframe\n' +
+                '            timeOffset += (k1.value + k2.value) * (k2.time - k1.time) / 2;\n' +
+                '        };\n' +
+                '\n' +
+                '        // Add the latest area (current moment - last keyframe)\n' +
+                '        var lastKeyValue = speedControl.key(i - 1).value;\n' +
+                '        var nextKeyValue = (i <= numberOfSpeedKeyframes) ? speedControl.key(i).value : lastKeyValue;\n' +
+                '        var lastKeyTime = speedControl.key(i - 1).time;\n' +
+                '        var nextKeyTime = (i <= numberOfSpeedKeyframes) ? speedControl.key(i).time : time;\n' +
+                '        var interpolatedValue = linear(time, lastKeyTime, nextKeyTime, lastKeyValue, nextKeyValue);\n' +
+                '        timeOffset += (interpolatedValue+lastKeyValue) * (time - lastKeyTime) / 2;\n' +
+                '    } else {\n' +
+                '        // Add the area before 1st keyframe (or whole area if no keyframes)\n' +
+                '        timeOffset = (time - timeRemapFirstKeyTime) * speedControl.value;\n' +
+                '    }\n' +
+                '\n' +
+                '    // normalize speed and apply offset \n' +
+                '    finalTime = timeOffset * 0.01 + offsetValue;\n' +
+                '}\n' +
+                '\n' +
+                '// Frame by frame interpolation\n' +
+                'if (interpolationMode.value == 1) {\n' +
+                '    if (numberOfSpeedKeyframes > 0 && speedControl.key(1).time < time) {\n' +
+                '        // Area before the first keyframe\n' +
+                '        var firstKeyframeTime = speedControl.key(1).time;\n' +
+                '        var firstKeyframeValue = speedControl.key(1).value;\n' +
+                '        if (firstKeyframeTime - timeRemapFirstKeyTime > 0) {\n' +
+                '            firstOffset = (firstKeyframeValue - 100) * (firstKeyframeTime - timeRemapFirstKeyTime);\n' +
+                '        }\n' +
+                '\n' +
+                '        // Area after the last keyframe\n' +
+                '        var lastKeyframeTime = speedControl.key(numberOfSpeedKeyframes).time;\n' +
+                '        var lastKeyframeValue = speedControl.key(numberOfSpeedKeyframes).value;\n' +
+                '        if (time - lastKeyframeTime > 0) {\n' +
+                '            lastOffset = (lastKeyframeValue - 100) * (time - lastKeyframeTime);\n' +
+                '        }\n' +
+                '\n' +
+                '        // Area between the first and the latest keyframes\n' +
+                '        if (time - lastKeyframeTime < 0) {\n' +
+                '            for (var t = timeToFrames(firstKeyframeTime); t < timeToFrames(time); t++) {\n' +
+                '                var currentSpeed = speedControl.valueAtTime(framesToTime(t)) - 100;\n' +
+                '                timeOffset += currentSpeed * thisComp.frameDuration;\n' +
+                '            }\n' +
+                '        } else {\n' +
+                '            for (var t = timeToFrames(firstKeyframeTime); t < timeToFrames(lastKeyframeTime); t++) {\n' +
+                '                var currentSpeed = speedControl.valueAtTime(framesToTime(t)) - 100;\n' +
+                '                timeOffset += currentSpeed * thisComp.frameDuration;\n' +
+                '            }\n' +
+                '        }\n' +
+                '\n' +
+                '        // Final result\n' +
+                '        finalTime = time - timeRemapFirstKeyTime + offsetValue + (firstOffset + timeOffset + lastOffset) * 0.01;\n' +
+                '    } else {\n' +
+                '        // Add area before 1st keyframe (or whole area if no keyframes)\n' +
+                '        finalTime = (time - timeRemapFirstKeyTime) * speedControl.value * 0.01 + offsetValue;\n' +
+                '    }\n' +
+                '}\n' +
+                '\n' +
+                '// Time-reverse layer?\n' +
+                'if (inverseControl.value == 1) {\n' +
+                '    finalTime = layerDuration - finalTime;\n' +
+                '} else {\n' +
+                '    finalTime;\n' +
+                '}\n' +
+                '\n' +
+                '// Limit duration to the last frame\n' +
+                'if (finalTime > fixedLayerDuration) {\n' +
+                '    finalTime = fixedLayerDuration;\n' +
+                '} else {\n' +
+                '    finalTime;\n' +
+                '}';
+
             var mainLayerinPoint = mainLayer.inPoint;
             var mainLayeroutPoint = mainLayer.outPoint;
             var timeRemap = mainLayer.property("Time Remap");
             mainLayer.timeRemapEnabled = true;
-            timeRemap.expression = velocityExpression;
+
+            if (mainLayer.hasAudio && !mainLayer.hasVideo) {
+                timeRemap.expression = audioVelocityExpression;
+            } else {
+                timeRemap.expression = velocityExpression;
+            }
+
             if (timeRemap.numKeys == 2) {
                 timeRemap.removeKey(2);
             }
@@ -553,17 +651,13 @@ function Velocity(thisObj) {
             alert("Open a composition first.");
             return;
         }
-        if (comp.selectedLayers.length === 0) {
-            alert("Select a video with velocity.");
-            return;
-        }
-        if (comp.selectedLayers.length > 1) {
-            alert("Select only one video with velocity.");
+        if (comp.selectedLayers.length !== 1) {
+            alert("Select a single video with velocity you want to split.");
             return;
         }
 
-        if (!mainLayer.hasVideo) {
-            alert("This layer doesn't support velocity. Precomp it first.");
+        if (!mainLayer.canSetTimeRemapEnabled) {
+            alert('[' + mainLayer.index + '] "' + mainLayer.name + '" doesn\'t support velocity.');
             return;
         }
 
@@ -597,6 +691,29 @@ function Velocity(thisObj) {
 
         switch (splitMode) {
             case 'Regular':
+                if (mainLayer.hasAudio && !mainLayer.hasVideo) {
+                    // Read time remap value on main layer
+                    var mainLayerTimeRemap = mainLayer.property("Time Remap");
+                    var timeRemapValue = mainLayerTimeRemap.valueAtTime(currentTime, true);
+
+                    // Remove all keyframes from current to the right on main layer
+                    mainLayerTimeRemap.setValueAtTime(currentTime, timeRemapValue);
+                    var mainLayerCurrentKeyframeIndex = mainLayerTimeRemap.nearestKeyIndex(currentTime);
+                    for (var i = mainLayerTimeRemap.numKeys; i > mainLayerCurrentKeyframeIndex; i--) {
+                        mainLayerTimeRemap.removeKey(i);
+                    }
+
+                    // Add keyframe on dublicated layer
+                    var duplicatedLayerTimeRemap = duplicatedLayer.property("Time Remap");
+                    duplicatedLayerTimeRemap.setValueAtTime(currentTime, timeRemapValue);
+                    var dublicateLayerCurrentKeyframeIndex = duplicatedLayerTimeRemap.nearestKeyIndex(currentTime);
+
+                    // Remove all keyframes from left to the current on dublicated layer 
+                    for (var i = dublicateLayerCurrentKeyframeIndex - 1; i > 0; i--) {
+                        duplicatedLayerTimeRemap.removeKey(i);
+                    }
+                    break;
+                }
 
                 // Read time remap value on main layer
                 var mainLayerTimeRemap = mainLayer.property("Time Remap");
@@ -706,6 +823,46 @@ function Velocity(thisObj) {
 
                 // -------------------Speed-------------------
 
+                if (mainLayer.hasAudio && !mainLayer.hasVideo) {
+                    // Remove all speed keyframes from current to the right on main layer
+                    var mainLayerSpeedSlider = mainLayer.property("Effects").property("Speed (%)").property("Slider");
+                    var speedValue = mainLayerSpeedSlider.valueAtTime(currentTime, true);
+                    if (mainLayerSpeedSlider.numKeys > 0) {
+                        mainLayerSpeedSlider.setValueAtTime(currentTime, speedValue);
+                        var mainLayerCurrentKeyframeIndex = mainLayerSpeedSlider.nearestKeyIndex(currentTime);
+                        for (var i = mainLayerSpeedSlider.numKeys; i > mainLayerCurrentKeyframeIndex; i--) {
+                            mainLayerSpeedSlider.removeKey(i);
+                        }
+                    }
+
+                    // Remove all offset keyframes from current to the right on main layer
+                    var mainLayerOffsetSlider = mainLayer.property("Effects").property("Offset").property("Slider");
+                    var offsetValue = mainLayerOffsetSlider.valueAtTime(currentTime, true);
+                    if (mainLayerOffsetSlider.numKeys > 0) {
+                        mainLayerOffsetSlider.setValueAtTime(currentTime, offsetValue);
+                        var mainLayerCurrentKeyframeIndex = mainLayerOffsetSlider.nearestKeyIndex(currentTime);
+                        for (var i = mainLayerOffsetSlider.numKeys; i > mainLayerCurrentKeyframeIndex; i--) {
+                            mainLayerOffsetSlider.removeKey(i);
+                        }
+                    }
+
+                    // Add speed keyframe on dublicated layer
+                    var duplicatedLayerSpeedSlider = duplicatedLayer.property("Effects").property("Speed (%)").property("Slider");
+                    duplicatedLayerSpeedSlider.setValueAtTime(currentTime, speedValue);
+                    var currentSpeedKeyframeIndex = duplicatedLayerSpeedSlider.nearestKeyIndex(currentTime);
+
+                    // Remove all speed keyframes from left to the current on dublicated layer
+                    if (duplicatedLayerSpeedSlider.numKeys > 1) {
+                        var currentSpeedKeyframeIndex = duplicatedLayerSpeedSlider.nearestKeyIndex(currentTime);
+                        for (var i = currentSpeedKeyframeIndex - 1; i > 0; i--) {
+                            duplicatedLayerSpeedSlider.removeKey(i);
+                        }
+                    }
+                    // Set initial speed keyframe on dublicated layer
+                    duplicatedLayerSpeedSlider.setValueAtTime(currentTime - compFrameDuration, 100);
+                    break;
+                }
+
                 // Remove all speed keyframes from current to the right on main layer
                 var mainLayerSpeedSlider = mainLayer.property("Effects").property("Speed (%)").property("Slider");
                 var speedValue = mainLayerSpeedSlider.valueAtTime(currentTime, true);
@@ -789,13 +946,13 @@ function Velocity(thisObj) {
 
             var mainLayer = comp.selectedLayers[i];
 
-            if (!mainLayer.hasVideo) {
-                alertPush('[' + mainLayer.index + '] "' + mainLayer.name + '" is not a video.');
+            if (!mainLayer.canSetTimeRemapEnabled) {
+                alertPush('[' + mainLayer.index + '] "' + mainLayer.name + '" doesn\'t support velocity.');
                 errorCollector = true;
                 continue;
             }
 
-            var offsetEffectExist = effectsExistance(mainLayer, ["Speed (%)", "Offset", "Time-reverse layer"]);
+            var offsetEffectExist = effectsExistance(mainLayer, ["Speed (%)", "Offset", "Time-reverse layer", "Graph support (SLOW!)"]);
             if (!offsetEffectExist && !mainLayer.timeRemapEnabled) {
                 alertPush('[' + mainLayer.index + '] "' + mainLayer.name + '" has nothing to delete.');
                 errorCollector = true;
@@ -810,7 +967,7 @@ function Velocity(thisObj) {
 
             // Delete controllers
             if (offsetEffectExist) {
-                deleteEffects(mainLayer, ["Speed (%)", "Offset", "Time-reverse layer"]);
+                deleteEffects(mainLayer, ["Speed (%)", "Offset", "Time-reverse layer", "Graph support (SLOW!)"]);
             }
 
         }
@@ -834,10 +991,6 @@ function Velocity(thisObj) {
 
         var effects = layer.property("ADBE Effect Parade");
         var effectsExist = false;
-
-        if (!layer.hasVideo) {
-            return effectsExist;
-        }
 
         for (var i = 0; i < effectsToCheck.length; i++) {
             for (var j = 1; j <= effects.numProperties; j++) {
