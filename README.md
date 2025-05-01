@@ -1,5 +1,5 @@
 # Velocity Script
-Is an After Effects script that allows you to animate time-remapping using speed slider.  
+After Effects script that allows you to animate time-remapping using speed slider.  
 Tutorial: https://www.youtube.com/watch?v=IB1keWDc_tk  
 ![image](https://github.com/eirisocherry/velocity-script/assets/115040224/81934aea-8e62-4647-97d9-1a03598343e3)  
 
